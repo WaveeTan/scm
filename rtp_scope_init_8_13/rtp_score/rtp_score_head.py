@@ -164,11 +164,19 @@ class RTPScoreRotatedRTDETRHead(RotatedRTDETRHead):
         matching_features = self._matching_query_features(
             final_query_feats, dn_meta
         )
+
+        # Keep original features for possible RSU / future heads.
         output["final_query_feats"] = matching_features
+
         if self.quality_head is not None:
+            # RTQD learns from decoder features, but must not modify
+            # the O2-RTDETR decoder in this controlled experiment.
+            quality_features = matching_features.detach()
+
             output["final_quality_logits"] = self.quality_head(
-                matching_features
+                quality_features
             )
+
         return output
 
     def loss(
@@ -627,9 +635,23 @@ class RTPScoreRotatedRTDETRHead(RotatedRTDETRHead):
                 raise ValueError("final RTQD is enabled but logits are missing")
             rtqd_loss = self.quality_head.loss(
                 final_quality_logits,
+
+                # Keep these for original positive diagnostics.
                 [record.pos_inds for record in final_records],
                 [record.rotated_iou for record in final_records],
-                loss_weight=self.rtp_score_cfg["rtqd"]["loss_weight"],
+
+                # NEW:
+                # [Q, num_gt] for every image.
+                # This activates all-query supervision.
+                pairwise_ious=[
+                    record.pairwise_iou
+                    for record in final_records
+                ],
+
+                loss_weight=self.rtp_score_cfg["rtqd"][
+                    "loss_weight"
+                ],
+
                 monotonic_weight=self.rtp_score_cfg["rtqd"][
                     "monotonic_weight"
                 ],

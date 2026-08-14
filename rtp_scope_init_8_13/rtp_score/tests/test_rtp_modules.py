@@ -19,15 +19,15 @@ class TestRTPModules(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Imports are deferred so dependency-free static checks still work.
-        from projects.rtp_scope.rtp_score.rtqd import (
+        from projects.rtp_scope_init_8_13.rtp_score.rtqd import (
             RotatedThresholdQualityHead,
         )
-        from projects.rtp_scope.rtp_score.scne import (
+        from projects.rtp_scope_init_8_13.rtp_score.scne import (
             SceneNegativeEvidenceHead,
             build_presence_targets,
             negative_evidence_bias,
         )
-        from projects.rtp_scope.rtp_score.rsu import (
+        from projects.rtp_scope_init_8_13.rtp_score.rsu import (
             RotatedSetUniquenessLoss,
         )
 

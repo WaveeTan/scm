@@ -4,7 +4,7 @@
 
 from mmengine.config import read_base
 
-from projects.rtp_scope.rtp_score import (
+from projects.rtp_scope_init_8_13.rtp_score import (
     RTPScoreDiagnosticsHook,
     RTPScoreRotatedRTDETR,
     RTPScoreRotatedRTDETRHead,

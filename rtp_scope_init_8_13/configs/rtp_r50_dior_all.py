@@ -4,7 +4,7 @@
 
 from mmengine.config import read_base
 
-from projects.rtp_scope.rtp_score import (
+from projects.rtp_scope_init_8_13.rtp_score import (
     RTPScoreDiagnosticsHook,
     RTPScoreRotatedRTDETR,
     RTPScoreRotatedRTDETRHead,
@@ -22,11 +22,26 @@ rtp_score_cfg = dict(
     ),
     rtqd=dict(
         enabled=True,
+
+        thresholds=(0.5, 0.6, 0.7, 0.8),
+        tau=0.05,
+
+        loss_weight=1.0,
+        monotonic_weight=0.10,
+
+        # Only final decoder RTQD.
         use_final_decoder=True,
         use_encoder=False,
+
+        # Keep these although encoder RTQD is disabled.
         encoder_preselect_k=900,
         encoder_num_select=300,
         encoder_rerank_start_epoch=8,
+
+        # IMPORTANT:
+        # final score = p_cls * q50^0.2
+        final_cls_exp=1.0,
+        final_quality_exp=0.20,
     ),
     rsu=dict(
         enabled=False,
