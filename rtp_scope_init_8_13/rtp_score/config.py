@@ -9,7 +9,7 @@ DEFAULT_RTP_SCORE_CFG = dict(
     eps=1e-6,
     score_fusion=dict(
         mode="geometric_mean",
-        cls_exp=0.65,
+        cls_exp=1.00,
         quality_exp=0.20,
         unique_exp=0.15,
     ),
@@ -36,7 +36,7 @@ DEFAULT_RTP_SCORE_CFG = dict(
         tau=0.05,
         loss_weight=1.0,
         monotonic_weight=0.10,
-        unmatched_policy="ignore",
+        unmatched_policy="all_query",
         detach_boxes=True,
         use_final_decoder=True,
         use_encoder=False,
@@ -92,8 +92,8 @@ def build_rtp_score_cfg(cfg: Optional[Mapping]) -> dict:
     ]
     if min(fusion_exponents) < 0:
         raise ValueError("score-fusion exponents must be non-negative")
-    if merged["rtqd"]["unmatched_policy"] != "ignore":
-        raise ValueError("RTQD unmatched_policy must remain 'ignore'")
+    # if merged["rtqd"]["unmatched_policy"] != "ignore":
+    #     raise ValueError("RTQD unmatched_policy must remain 'ignore'")
     if not merged["rtqd"]["detach_boxes"]:
         raise ValueError(
             "RTQD targets must detach predicted boxes in this implementation"

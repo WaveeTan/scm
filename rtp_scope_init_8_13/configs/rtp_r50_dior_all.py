@@ -71,4 +71,4 @@ custom_hooks.extend(
 )
 
 randomness = dict(seed=42, deterministic=False)
-work_dir = "./work_dirs/rtp_r50_dior_all"
+work_dir = "./work_dirs/rtp_r50_dior_all_8_14"

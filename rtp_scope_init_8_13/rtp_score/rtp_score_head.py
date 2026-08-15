@@ -633,28 +633,24 @@ class RTPScoreRotatedRTDETRHead(RotatedRTDETRHead):
         if self.quality_head is not None:
             if final_quality_logits is None:
                 raise ValueError("final RTQD is enabled but logits are missing")
+            rtqd_cfg = self.rtp_score_cfg["rtqd"]
+
+            pairwise_ious = None
+
+            if rtqd_cfg["unmatched_policy"] == "all_query":
+                pairwise_ious = [
+                    record.pairwise_iou
+                    for record in final_records
+                ]
             rtqd_loss = self.quality_head.loss(
                 final_quality_logits,
-
-                # Keep these for original positive diagnostics.
                 [record.pos_inds for record in final_records],
                 [record.rotated_iou for record in final_records],
 
-                # NEW:
-                # [Q, num_gt] for every image.
-                # This activates all-query supervision.
-                pairwise_ious=[
-                    record.pairwise_iou
-                    for record in final_records
-                ],
+                pairwise_ious=pairwise_ious,
 
-                loss_weight=self.rtp_score_cfg["rtqd"][
-                    "loss_weight"
-                ],
-
-                monotonic_weight=self.rtp_score_cfg["rtqd"][
-                    "monotonic_weight"
-                ],
+                loss_weight=rtqd_cfg["loss_weight"],
+                monotonic_weight=rtqd_cfg["monotonic_weight"],
             )
             losses["loss_rtqd"] = rtqd_loss[0]
             losses["loss_rtqd_mono"] = rtqd_loss[1]
