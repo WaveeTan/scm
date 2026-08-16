@@ -288,40 +288,40 @@ class SCMRotatedRTDETR(RotatedRTDETR):
                     raw_class_logits, scene_targets, reduction='mean')
                 losses['loss_scene_cls'] = (
                     loss_scene_cls * self.loss_scene_cls_weight)
-                if (
-                    scene_outputs is not None
-                    and self.loss_scene_scale_weight > 0
-                ):
-                    raw_scale_logits = scene_outputs.get(
-                        'raw_scale_logits',
-                        None,
+        if (
+            scene_outputs is not None
+            and self.loss_scene_scale_weight > 0
+        ):
+            raw_scale_logits = scene_outputs.get(
+                'raw_scale_logits',
+                None,
+            )
+
+            if raw_scale_logits is not None:
+
+                scene_scale_targets = (
+                    build_scene_scale_targets(
+                        batch_data_samples,
+                        boundaries=self.scale_boundaries,
+                        device=raw_scale_logits.device,
+                        dtype=raw_scale_logits.dtype,
+                        temperature=self.scale_temperature,
+                        count_tau=1.0,
                     )
+                )
 
-                    if raw_scale_logits is not None:
+                loss_scene_scale = (
+                    F.binary_cross_entropy_with_logits(
+                        raw_scale_logits,
+                        scene_scale_targets,
+                        reduction='mean',
+                    )
+                )
 
-                        scene_scale_targets = (
-                            build_scene_scale_targets(
-                                batch_data_samples,
-                                boundaries=self.scale_boundaries,
-                                device=raw_scale_logits.device,
-                                dtype=raw_scale_logits.dtype,
-                                temperature=self.scale_temperature,
-                                count_tau=1.0,
-                            )
-                        )
-
-                        loss_scene_scale = (
-                            F.binary_cross_entropy_with_logits(
-                                raw_scale_logits,
-                                scene_scale_targets,
-                                reduction='mean',
-                            )
-                        )
-
-                        losses[
-                            'loss_scene_scale'
-                        ] = (
-                            loss_scene_scale
-                            * self.loss_scene_scale_weight
-                        )
+                losses[
+                    'loss_scene_scale'
+                ] = (
+                    loss_scene_scale
+                    * self.loss_scene_scale_weight
+                )
         return losses

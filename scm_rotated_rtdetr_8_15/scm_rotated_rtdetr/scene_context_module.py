@@ -14,7 +14,7 @@ class SceneContextModule(nn.Module):
                  num_levels: int = 3,
                  num_scene_prototypes: int = 8,
                  temperature: float = 0.1,
-                #  scene_bias_scale: float = 0.10,
+                 scene_bias_scale: float = 0.10,
                  num_scale_groups: int = 4,
                  scale_bias_scale: float = 0.05) -> None:
         super().__init__()
@@ -22,6 +22,7 @@ class SceneContextModule(nn.Module):
             raise ValueError('temperature must be positive.')
         self.num_levels = int(num_levels)
         self.temperature = float(temperature)
+        self.scene_bias_scale = float(scene_bias_scale)
         self.num_scale_groups = int(num_scale_groups)
         self.scale_bias_scale = float(scale_bias_scale)
 

@@ -13,7 +13,7 @@ from mmengine.runner.loops import EpochBasedTrainLoop, TestLoop, ValLoop
 from projects.rotated_dino.rotated_dino.match_cost import ChamferCost, GDCost
 from projects.rotated_rtdetr.rotated_rtdetr import (
     RTDETRFPN, RTDETRVarifocalLoss, ResNetV1dPaddle, RotatedRTDETRHead)
-from projects.scm_rotated_rtdetr.scm_rotated_rtdetr import (
+from projects.scm_rotated_rtdetr_8_15.scm_rotated_rtdetr import (
     SCMRotatedRTDETR, SceneConditionWarmupHook)
 
 
@@ -149,7 +149,10 @@ model = dict(
         num_levels=3,
         num_scene_prototypes=8,
         temperature=0.1,
-        scene_bias_scale=0.10),
+
+        scene_bias_scale=0.10,
+        num_scale_groups=4,
+        scale_bias_scale=0.05,),
     data_preprocessor=dict(
         type=DetDataPreprocessor,
         mean=[103.53, 116.28, 123.675],
