@@ -351,10 +351,7 @@ class SCMRotatedRTDETR(RotatedRTDETR):
                     raw_class_logits, scene_targets, reduction='mean')
                 losses['loss_scene_cls'] = (
                     loss_scene_cls * self.loss_scene_cls_weight)
-        if (
-            scene_outputs is not None
-            and self.loss_scene_scale_weight > 0
-        ):
+        if (scene_outputs is not None and self.loss_scene_scale_weight > 0):
             raw_scale_logits = scene_outputs.get(
                 'raw_scale_logits',
                 None,
@@ -386,5 +383,37 @@ class SCMRotatedRTDETR(RotatedRTDETR):
                 ] = (
                     loss_scene_scale
                     * self.loss_scene_scale_weight
+                )
+        if self.loss_scene_ar_weight > 0:
+
+            raw_ar_logits = scene_outputs.get(
+                'raw_ar_logits',
+                None,
+            )
+
+            if raw_ar_logits is not None:
+                # Target is generated from GT OBB width / height.
+                scene_ar_targets = (
+                    build_scene_ar_targets(
+                        batch_data_samples,
+                        boundaries=self.ar_boundaries,
+                        device=raw_ar_logits.device,
+                        dtype=raw_ar_logits.dtype,
+                        temperature=self.ar_temperature,
+                        count_tau=1.0,
+                    )
+                )
+
+                loss_scene_ar = (
+                    F.binary_cross_entropy_with_logits(
+                        raw_ar_logits,
+                        scene_ar_targets,
+                        reduction='mean',
+                    )
+                )
+
+                losses['loss_scene_ar'] = (
+                    loss_scene_ar
+                    * self.loss_scene_ar_weight
                 )
         return losses
