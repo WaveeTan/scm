@@ -55,12 +55,18 @@ class RotatedThresholdQualityHead(nn.Module):
         loss_weight: float = 1.0,
         monotonic_weight: float = 0.1,
     ) -> Tuple[Tensor, Tensor, dict]:
-        """RTQD loss.
+        """Unique-TP RTQD loss.
 
-        If pairwise_ious is supplied, use all-query supervision:
-            target_i = max_j rIoU(query_i, gt_j)
+        When pairwise_ious is supplied:
 
-        Otherwise retain the original positive-only behavior.
+            Hungarian matched query:
+                target_iou = matched rotated IoU
+
+            Unmatched query:
+                target_iou = 0
+
+        pairwise IoU is used only for negative-query weighting
+        and duplicate-hard-negative diagnostics.
         """
 
         # ================================================================
@@ -76,6 +82,7 @@ class RotatedThresholdQualityHead(nn.Module):
             all_targets = []
             all_weights = []
             all_max_ious = []
+            all_is_positive = []
 
             for image_index, pairwise_iou in enumerate(pairwise_ious):
                 num_queries = quality_logits.size(1)
@@ -190,12 +197,16 @@ class RotatedThresholdQualityHead(nn.Module):
                 all_targets.append(targets_i)
                 all_weights.append(weights_i)
                 all_max_ious.append(max_iou)
+                all_is_positive.append(is_positive)
 
             logits = torch.cat(all_logits, dim=0)       # [B*Q, T]
             targets = torch.cat(all_targets, dim=0)     # [B*Q, T]
             query_weights = torch.cat(all_weights, 0)   # [B*Q]
             max_ious = torch.cat(all_max_ious, 0)       # [B*Q]
+            is_positive_all = torch.cat(all_is_positive,0,)
+            duplicate_mask = ((~is_positive_all) & (max_ious >= 0.50))
 
+            background_mask = ((~is_positive_all) & (max_ious < 0.10))
             # BCE for every threshold, then average thresholds per query.
             per_query_loss = F.binary_cross_entropy_with_logits(
                 logits,
@@ -281,6 +292,18 @@ class RotatedThresholdQualityHead(nn.Module):
 
                 "rtqd_query_weight_mean":
                     query_weights.mean().detach(),
+
+                "q50_mean_duplicate_hardneg":
+                    masked_mean(
+                        q50,
+                        duplicate_mask,
+                    ).detach(),
+
+                "q50_mean_background":
+                    masked_mean(
+                        q50,
+                        background_mask,
+                    ).detach(),
             }
 
             for index, threshold in enumerate(

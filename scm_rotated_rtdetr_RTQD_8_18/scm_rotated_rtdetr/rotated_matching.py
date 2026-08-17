@@ -54,7 +54,7 @@ class RotatedMatchingTargetBuilder:
         factor = bbox_pred.new_tensor(
             [img_w, img_h, img_w, img_h, self.angle_factor]
         ).unsqueeze(0)
-        decoded_bbox_pred = bbox_pred * factor
+        decoded_bbox_pred = bbox_pred.detach() * factor
         num_queries = bbox_pred.size(0)
 
         # regularize_boxes mutates in place, so never pass dataset-owned boxes.
@@ -66,7 +66,7 @@ class RotatedMatchingTargetBuilder:
         )
         assign_result = self.assigner.assign(
             pred_instances=InstanceData(
-                scores=cls_score,
+                scores=cls_score.detach(),
                 bboxes=decoded_bbox_pred,
             ),
             gt_instances=normalized_gt,
