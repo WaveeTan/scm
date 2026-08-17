@@ -1,6 +1,4 @@
-"""RT-DETR decoder variant that exposes the terminal query feature."""
-
-from typing import Tuple
+"""RT-DETR decoder variant that exposes the terminal query feature for RTQD."""
 
 from mmdet.models.layers.transformer import inverse_sigmoid
 from torch import Tensor, nn
@@ -10,8 +8,21 @@ from projects.rotated_rtdetr.rotated_rtdetr import (
 )
 
 
-class SCMRTQDRotatedRTDETRTransformerDecoder(RotatedRTDETRTransformerDecoder):
-    """Preserve baseline outputs and additionally return final query features."""
+class SCMRTQDRotatedRTDETRTransformerDecoder(
+    RotatedRTDETRTransformerDecoder
+):
+    """Preserve O2-RTDETR decoder outputs and expose final query features.
+
+    Returns:
+        tuple:
+            - all_classes: list[Tensor], each [B, Q_total, num_classes]
+            - all_coords: list[Tensor], each [B, Q_total, 5]
+            - final_query: Tensor [B, Q_total, C]
+
+        The first two values intentionally keep the exact return contract of
+        :class:`RotatedRTDETRTransformerDecoder`. ``final_query`` is the only
+        additional value and is consumed exclusively by RTQD.
+    """
 
     def forward(
         self,
@@ -28,67 +39,34 @@ class SCMRTQDRotatedRTDETRTransformerDecoder(RotatedRTDETRTransformerDecoder):
         **kwargs,
     ):
         if not self.return_intermediate:
-            raise ValueError(
-                'RTQD requires return_intermediate=True'
-            )
-
+            raise ValueError('RTQD requires return_intermediate=True')
         if reg_branches is None or cls_branches is None:
-            raise ValueError(
-                'RTQD decoder requires prediction branches'
-            )
-
+            raise ValueError('RTQD decoder requires reg_branches and cls_branches')
         if reference_points.shape[-1] != 5:
             raise ValueError(
-                'RTQD decoder expects rotated references'
+                'RTQD decoder expects rotated reference points with dim=5, '
+                f'got {reference_points.shape[-1]}'
             )
 
-        eval_idx = int(
-            kwargs.pop('eval_idx', -1)
-        )
-
+        eval_idx = int(kwargs.pop('eval_idx', -1))
         if eval_idx < 0:
             eval_idx += self.num_layers
-
         if not 0 <= eval_idx < self.num_layers:
-            raise ValueError(
-                f'Invalid decoder eval_idx={eval_idx}'
-            )
+            raise ValueError(f'Invalid decoder eval_idx={eval_idx}')
 
-        # ---------------------------------------------------------
-        # Preserve original RT-DETR decoder outputs.
-        # ---------------------------------------------------------
-        hidden_states = []
         all_classes = []
         all_coords = []
-
-        # Extra output required only by RTQD.
         final_query = None
 
-        for layer_id, layer in enumerate(
-            self.layers
-        ):
-            num_levels = (
-                layer.cross_attn_cfg.num_levels
-            )
+        for layer_id, layer in enumerate(self.layers):
+            num_levels = layer.cross_attn_cfg.num_levels
 
             reference_input = (
-                reference_points
-                .unsqueeze(2)
-                .repeat(
-                    1,
-                    1,
-                    num_levels,
-                    1,
-                )
+                reference_points.unsqueeze(2).repeat(1, 1, num_levels, 1)
             )
+            reference_input[..., -1] *= self.angle_factor
 
-            reference_input[..., -1] *= (
-                self.angle_factor
-            )
-
-            query_pos = self.ref_point_head(
-                reference_points
-            )
+            query_pos = self.ref_point_head(reference_points)
 
             query = layer(
                 query,
@@ -103,65 +81,42 @@ class SCMRTQDRotatedRTDETRTransformerDecoder(RotatedRTDETRTransformerDecoder):
                 **kwargs,
             )
 
-            bbox_delta = reg_branches[
-                layer_id
-            ](query)
+            bbox_delta = reg_branches[layer_id](query)
 
-            if (
-                self.training
-                or layer_id == eval_idx
-            ):
-                # Keep original hidden-state output.
-                hidden_states.append(query)
-
-                all_classes.append(
-                    cls_branches[layer_id](
-                        query
-                    )
-                )
-
+            if self.training or layer_id == eval_idx:
+                all_classes.append(cls_branches[layer_id](query))
                 all_coords.append(
                     (
                         bbox_delta
-                        + inverse_sigmoid(
-                            reference_points,
-                            eps=1e-3,
-                        )
+                        + inverse_sigmoid(reference_points, eps=1e-3)
                     ).sigmoid()
                 )
 
-                if (
-                    not self.training
-                    or layer_id
-                    == self.num_layers - 1
-                ):
-                    # Terminal decoder feature for RTQD.
+                if not self.training or layer_id == self.num_layers - 1:
+                    # This is the only additional RTQD output.
                     final_query = query
                     break
 
+            # Same iterative reference-point update as O2-RTDETR.
             reference_points = (
                 bbox_delta
-                + inverse_sigmoid(
-                    reference_points,
-                    eps=1e-3,
-                ).detach()
+                + inverse_sigmoid(reference_points, eps=1e-3).detach()
             ).sigmoid().detach()
 
         if final_query is None:
+            raise RuntimeError('Decoder did not produce terminal query features.')
+        if final_query.ndim != 3:
             raise RuntimeError(
-                'Decoder did not produce '
-                'terminal query features.'
+                'final_query must be [B, Q_total, C], got '
+                f'{tuple(final_query.shape)}'
+            )
+        if final_query.size(-1) != self.embed_dims:
+            raise RuntimeError(
+                'final_query has wrong embedding dimension: '
+                f'{final_query.size(-1)} vs expected {self.embed_dims}'
             )
 
-        # Original contract + one RTQD output.
-        return (
-            hidden_states,
-            (
-                all_classes,
-                all_coords,
-            ),
-            final_query,
-        )
+        return all_classes, all_coords, final_query
 
 
-__all__ = ["SCMRTQDRotatedRTDETRTransformerDecoder"]
+__all__ = ['SCMRTQDRotatedRTDETRTransformerDecoder']
