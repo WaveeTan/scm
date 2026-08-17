@@ -26,30 +26,70 @@ class SCMRTQDRotatedRTDETRTransformerDecoder(RotatedRTDETRTransformerDecoder):
         reg_branches: nn.ModuleList,
         cls_branches: nn.ModuleList,
         **kwargs,
-    ) -> Tuple[Tensor]:
+    ):
         if not self.return_intermediate:
-            raise ValueError("RTP-Score requires return_intermediate=True")
-        if reg_branches is None or cls_branches is None:
-            raise ValueError("RTP-Score decoder requires prediction branches")
-        if reference_points.shape[-1] != 5:
-            raise ValueError("RTP-Score decoder expects rotated references")
+            raise ValueError(
+                'RTQD requires return_intermediate=True'
+            )
 
-        eval_idx = int(kwargs.pop("eval_idx", -1))
+        if reg_branches is None or cls_branches is None:
+            raise ValueError(
+                'RTQD decoder requires prediction branches'
+            )
+
+        if reference_points.shape[-1] != 5:
+            raise ValueError(
+                'RTQD decoder expects rotated references'
+            )
+
+        eval_idx = int(
+            kwargs.pop('eval_idx', -1)
+        )
+
         if eval_idx < 0:
             eval_idx += self.num_layers
-        if not 0 <= eval_idx < self.num_layers:
-            raise ValueError(f"Invalid decoder eval_idx={eval_idx}")
 
+        if not 0 <= eval_idx < self.num_layers:
+            raise ValueError(
+                f'Invalid decoder eval_idx={eval_idx}'
+            )
+
+        # ---------------------------------------------------------
+        # Preserve original RT-DETR decoder outputs.
+        # ---------------------------------------------------------
+        hidden_states = []
         all_classes = []
         all_coords = []
+
+        # Extra output required only by RTQD.
         final_query = None
-        for layer_id, layer in enumerate(self.layers):
-            num_levels = layer.cross_attn_cfg.num_levels
-            reference_input = reference_points.unsqueeze(2).repeat(
-                1, 1, num_levels, 1
+
+        for layer_id, layer in enumerate(
+            self.layers
+        ):
+            num_levels = (
+                layer.cross_attn_cfg.num_levels
             )
-            reference_input[..., -1] *= self.angle_factor
-            query_pos = self.ref_point_head(reference_points)
+
+            reference_input = (
+                reference_points
+                .unsqueeze(2)
+                .repeat(
+                    1,
+                    1,
+                    num_levels,
+                    1,
+                )
+            )
+
+            reference_input[..., -1] *= (
+                self.angle_factor
+            )
+
+            query_pos = self.ref_point_head(
+                reference_points
+            )
+
             query = layer(
                 query,
                 query_pos=query_pos,
@@ -62,26 +102,66 @@ class SCMRTQDRotatedRTDETRTransformerDecoder(RotatedRTDETRTransformerDecoder):
                 reference_points=reference_input,
                 **kwargs,
             )
-            bbox_delta = reg_branches[layer_id](query)
-            if self.training or layer_id == eval_idx:
-                all_classes.append(cls_branches[layer_id](query))
+
+            bbox_delta = reg_branches[
+                layer_id
+            ](query)
+
+            if (
+                self.training
+                or layer_id == eval_idx
+            ):
+                # Keep original hidden-state output.
+                hidden_states.append(query)
+
+                all_classes.append(
+                    cls_branches[layer_id](
+                        query
+                    )
+                )
+
                 all_coords.append(
                     (
                         bbox_delta
-                        + inverse_sigmoid(reference_points, eps=1e-3)
+                        + inverse_sigmoid(
+                            reference_points,
+                            eps=1e-3,
+                        )
                     ).sigmoid()
                 )
-                if not self.training or layer_id == self.num_layers - 1:
+
+                if (
+                    not self.training
+                    or layer_id
+                    == self.num_layers - 1
+                ):
+                    # Terminal decoder feature for RTQD.
                     final_query = query
                     break
+
             reference_points = (
                 bbox_delta
-                + inverse_sigmoid(reference_points, eps=1e-3).detach()
+                + inverse_sigmoid(
+                    reference_points,
+                    eps=1e-3,
+                ).detach()
             ).sigmoid().detach()
 
         if final_query is None:
-            raise RuntimeError("decoder did not produce a terminal query")
-        return all_classes, all_coords, final_query
+            raise RuntimeError(
+                'Decoder did not produce '
+                'terminal query features.'
+            )
+
+        # Original contract + one RTQD output.
+        return (
+            hidden_states,
+            (
+                all_classes,
+                all_coords,
+            ),
+            final_query,
+        )
 
 
 __all__ = ["SCMRTQDRotatedRTDETRTransformerDecoder"]

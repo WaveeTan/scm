@@ -366,22 +366,32 @@ class SCMRotatedRTDETR(RotatedRTDETR):
         eval_idx: int = -1,
     ) -> Dict:
 
-        classes, coordinates, final_query = (
-            self.decoder(
-                query=query,
-                value=memory,
-                key_padding_mask=memory_mask,
-                self_attn_mask=dn_mask,
-                reference_points=reference_points,
-                spatial_shapes=spatial_shapes,
-                level_start_index=level_start_index,
-                valid_ratios=valid_ratios,
-                reg_branches=self.bbox_head.reg_branches,
-                cls_branches=cls_branches,
-                eval_idx=eval_idx,
-            )
+        (
+            hidden_states,
+            references,
+            final_query,
+        ) = self.decoder(
+            query=query,
+            value=memory,
+            key_padding_mask=memory_mask,
+            self_attn_mask=dn_mask,
+            reference_points=reference_points,
+            spatial_shapes=spatial_shapes,
+            level_start_index=level_start_index,
+            valid_ratios=valid_ratios,
+            reg_branches=self.bbox_head.reg_branches,
+            cls_branches=cls_branches,
+            eval_idx=eval_idx,
         )
 
+        # references:
+        # (
+        #     all_layers_cls_scores,
+        #     all_layers_bbox_preds
+        # )
+        classes, coordinates = references
+
+        # Preserve the zero-connected label embedding behavior.
         if query.size(1) == self.num_queries:
             classes[0] = classes[0] + (
                 self.dn_query_generator
@@ -390,10 +400,14 @@ class SCMRotatedRTDETR(RotatedRTDETR):
             )
 
         return dict(
-            hidden_states=classes,
-            references=coordinates,
+            # Keep baseline bbox-head interface.
+            hidden_states=hidden_states,
+            references=(
+                classes,
+                coordinates,
+            ),
 
-            # RTQD需要
+            # Extra RTQD input.
             final_query_feats=final_query,
         )
 
@@ -450,7 +464,7 @@ class SCMRotatedRTDETR(RotatedRTDETR):
                     loss_scene_scale
                     * self.loss_scene_scale_weight
                 )
-        if self.loss_scene_ar_weight > 0:
+        if scene_outputs is not None and self.loss_scene_ar_weight > 0:
 
             raw_ar_logits = scene_outputs.get(
                 'raw_ar_logits',

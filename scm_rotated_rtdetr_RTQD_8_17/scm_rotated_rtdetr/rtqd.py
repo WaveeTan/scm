@@ -7,8 +7,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from .utils.tensor_utils import connected_zero
-
+def connected_zero(tensor: Tensor) -> Tensor:
+    """Return a differentiable zero connected to tensor."""
+    return tensor.sum() * 0.0
 
 class RotatedThresholdQualityHead(nn.Module):
     """Predict probabilities of crossing several rotated-IoU thresholds."""

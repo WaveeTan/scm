@@ -11,10 +11,12 @@ from mmengine.optim.optimizer import OptimWrapper
 from mmengine.optim.scheduler.lr_scheduler import LinearLR
 from mmengine.runner.loops import EpochBasedTrainLoop, TestLoop, ValLoop
 from projects.rotated_dino.rotated_dino.match_cost import ChamferCost, GDCost
-from projects.rotated_rtdetr.rotated_rtdetr import (
-    RTDETRFPN, RTDETRVarifocalLoss, ResNetV1dPaddle, RotatedRTDETRHead)
+from projects.rotated_rtdetr.rotated_rtdetr import RTDETRFPN, RTDETRVarifocalLoss, ResNetV1dPaddle
 from projects.scm_rotated_rtdetr_RTQD_8_17.scm_rotated_rtdetr import (
-    SCMRotatedRTDETR, SceneConditionWarmupHook)
+    SCMRotatedRTDETR,
+    SCMRTQDRotatedRTDETRHead,
+    SceneConditionWarmupHook,
+)
 
 
 default_scope = 'ai4rs'
@@ -229,7 +231,7 @@ model = dict(
                 ffn_drop=0.0)),
         post_norm_cfg=None),
     bbox_head=dict(
-        type=RotatedRTDETRHead,
+        type=SCMRTQDRotatedRTDETRHead,
         num_classes=20,
         angle_cfg=angle_cfg,
         angle_factor=angle_factor,
@@ -249,7 +251,35 @@ model = dict(
             fun='log1p',
             tau=1,
             sqrt=False,
-            loss_weight=2.0)),
+            loss_weight=2.0),
+        rtqd_cfg=dict(
+            enabled=True,
+
+            thresholds=(
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+            ),
+
+            tau=0.05,
+
+            # RTQD branch
+            loss_weight=1.0,
+
+            # q50 >= q60 >= q70 >= q80
+            monotonic_weight=0.10,
+
+            # Hungarian-aware unique TP
+            unmatched_policy='unique_tp',
+
+            # Final ranking:
+            # p_cls^1.0 * q50^0.2
+            final_cls_exp=1.0,
+            final_quality_exp=0.20,
+
+            eps=1e-6,
+        )),
     dn_cfg=dict(
         label_noise_scale=0.5,
         box_noise_scale=1.0,
