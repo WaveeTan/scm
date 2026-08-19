@@ -1,0 +1,57 @@
+FILES IN THIS PACKAGE
+=====================
+
+NEW / MODIFIED FILES PROVIDED
+-----------------------------
+1. scm_rotated_rtdetr/sd_loss.py
+2. scm_rotated_rtdetr/scm_sd_head.py
+3. scm_rotated_rtdetr/__init__.py
+4. configs/scm_o2_rtdetr_r50vd_2xb4_72e_dior_sd.py
+5. top-level __init__.py
+
+COPY UNCHANGED FROM scm_rotated_rtdetr_8_15
+-------------------------------------------
+Copy these four files without modification into:
+projects/scm_rotated_rtdetr_SD_8_18/scm_rotated_rtdetr/
+
+- scene_context_module.py
+- scene_warmup_hook.py
+- scm_rotated_rtdetr.py
+- utils.py
+
+EXPECTED PROJECT TREE
+---------------------
+projects/
+└── scm_rotated_rtdetr_SD_8_18/
+    ├── __init__.py
+    ├── configs/
+    │   └── scm_o2_rtdetr_r50vd_2xb4_72e_dior_sd.py
+    └── scm_rotated_rtdetr/
+        ├── __init__.py
+        ├── scene_context_module.py
+        ├── scene_warmup_hook.py
+        ├── scm_rotated_rtdetr.py
+        ├── utils.py
+        ├── sd_loss.py
+        └── scm_sd_head.py
+
+CONTROLLED EXPERIMENT
+---------------------
+Unchanged:
+- 8/15 SCM Class + Scale query selection
+- hbox_iou Varifocal Loss
+- KLD/GD loss
+- Hungarian matcher
+- DN target generation and DN L1 bbox loss
+- backbone / neck / encoder / decoder
+
+Changed:
+- decoder matching-query bbox L1 -> RotatedScaleDynamicLoss
+- encoder selected-query bbox L1 -> RotatedScaleDynamicLoss
+
+Recommended first ablation:
+A0: original 8/15
+A1: delta=0.25
+A2: delta=0.50
+
+Keep every other setting identical.
