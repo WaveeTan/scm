@@ -474,7 +474,7 @@ model = dict(
             ar_full=8.0,
 
             center_weight=1.0,
-            angle_weight=0.5,
+            angle_weight=0.0,
             short_side_weight=0.5,
 
             # Auxiliary coefficient; intentionally far below baseline
