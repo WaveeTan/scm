@@ -13,7 +13,7 @@ from mmengine.runner.loops import EpochBasedTrainLoop, TestLoop, ValLoop
 from projects.rotated_dino.rotated_dino.match_cost import ChamferCost, GDCost
 from projects.rotated_rtdetr.rotated_rtdetr import (
     RTDETRFPN, RTDETRVarifocalLoss, ResNetV1dPaddle, RotatedRTDETRHead)
-from projects.scm_rotated_rtdetr_SAGR_8_20.scm_rotated_rtdetr import (
+from projects.scm_rotated_rtdetr_SAGR_8_21.scm_rotated_rtdetr import (
     SCMRotatedRTDETR, SceneConditionWarmupHook)
 
 

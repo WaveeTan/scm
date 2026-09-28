@@ -31,14 +31,15 @@ val_dataloader["dataset"].update(
     test_mode=True,
 )
 
-test_dataloader["dataset"].update(
-    data_root=data_root,
-    ann_file="",
-    data_prefix=dict(
-        img_path="test/images/",
-    ),
-    test_mode=True,
+test_dataloader = val_dataloader
+
+val_evaluator = dict(
+    type="DOTAMetric",
+    metric="mAP",
+    iou_thrs=[0.5],
 )
+
+test_evaluator = val_evaluator
 
 
 # =========================================================================
@@ -134,14 +135,14 @@ work_dir = (
 # 7. Validation / test evaluation
 # =========================================================================
 
-val_evaluator = dict(
-    type="DOTAMetric",
-    metric="mAP",
-)
+# val_evaluator = dict(
+#     type="DOTAMetric",
+#     metric="mAP",
+# )
 
-test_evaluator = dict(
-    type="DOTAMetric",
-    format_only=True,
-    merge_patches=True,
-    outfile_prefix=f"{work_dir}/Task1",
-)
+# test_evaluator = dict(
+#     type="DOTAMetric",
+#     format_only=True,
+#     merge_patches=True,
+#     outfile_prefix=f"{work_dir}/Task1",
+# )

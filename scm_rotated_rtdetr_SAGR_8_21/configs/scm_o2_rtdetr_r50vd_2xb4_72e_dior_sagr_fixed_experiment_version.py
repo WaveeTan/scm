@@ -22,12 +22,14 @@ from projects.rotated_rtdetr.rotated_rtdetr import (
 )
 
 from projects.scm_rotated_rtdetr_SAGR_8_21.scm_rotated_rtdetr import (
-    SCMRotatedRTDETR,
+    # SCMRotatedRTDETR,
     SCMSAGRRotatedRTDETRHead,
     SceneConditionWarmupHook,
 )
 
-
+from projects.scm_rotated_rtdetr_SAGR_8_21.scm_rotated_rtdetr.scm_rotated_rtdetr_experiment_version import (
+    SCMRotatedRTDETR,
+)
 default_scope = "ai4rs"
 
 default_hooks = dict(

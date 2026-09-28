@@ -21,7 +21,7 @@ from projects.rotated_rtdetr.rotated_rtdetr import (
     ResNetV1dPaddle,
 )
 
-from projects.scm_rotated_rtdetr_SD_8_18.scm_rotated_rtdetr import (
+from projects.scm_rotated_rtdetr_SAGR_8_21.scm_rotated_rtdetr import (
     SCMRotatedRTDETR,
     SCMSDRotatedRTDETRHead,
     SceneConditionWarmupHook,
